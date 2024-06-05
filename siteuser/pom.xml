@@ -54,11 +54,12 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- 
 		<dependency>
 			<groupId>ce.mnu</groupId>
-			<artifactId>pr1</artifactId>
+			<artifactId>siteuser</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
+		</dependency>-->
 	</dependencies>
 
 	<build>
