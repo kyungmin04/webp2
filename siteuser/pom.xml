@@ -74,7 +74,8 @@
 			<groupId>ce.mnu</groupId>
 			<artifactId>siteuser</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
-		</dependency>-->
+		</dependency>
+		-->
 	</dependencies>
 
 	<build>
