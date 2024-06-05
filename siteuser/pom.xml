@@ -16,6 +16,20 @@
 	<properties>
 		<java.version>17</java.version>
 	</properties>
+	<repositories>
+        <repository>
+            <id>mulesoft-releases</id>
+            <name>MuleSoft Repository</name>
+            <url>http://repository.mulesoft.org/releases/</url>
+            <layout>default</layout>
+        </repository>
+        <repository>
+            <id>mulesoft-snapshots</id>
+            <name>MuleSoft Snapshot Repository</name>
+            <url>http://repository.mulesoft.org/snapshots/</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>
 	<dependencies>
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
@@ -54,6 +68,7 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
 		<!-- 
 		<dependency>
 			<groupId>ce.mnu</groupId>
