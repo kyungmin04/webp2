@@ -69,13 +69,11 @@
 			<scope>test</scope>
 		</dependency>
 		
-		<!-- 
 		<dependency>
 			<groupId>ce.mnu</groupId>
-			<artifactId>siteuser</artifactId>
+			<artifactId>pr1</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
-		-->
 	</dependencies>
 
 	<build>
