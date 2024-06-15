@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
+<title>JSON 데이터</title>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+	<div class="w3-container w3-blue">
+		<h1 id="header"></h1>
+		<div id="login-status"></div> <!-- 로그인 상태를 표시할 요소 -->
+	</div>
+	
+	<div class="w3-container">
+		<div class="w3-panel w3-leftbar">
+			<p id="section"></p>
+		</div>
+	</div>
+	
+	<script>
+	function show(obj, pid){
+		document.getElementById("header").innerHTML = `<h2>${obj.header}</h2>`;
+		html = "";
+		if(pid == 0){
+			for (let k = 0; k < obj.menus.length; k++){
+				let key = Object.keys(obj.menus[k])[0];
+				let value = obj.menus[k][key];
+				html += `<p class='w3-panel w3-padding-16'><a href='${value}'>${key}</a></p>`;
+			}
+		} else if(pid == 1){
+			html += `
+				<form id="signupForm"/*action="/siteuser/sample" method="post"*/>
+					<p>이름: <input type="text" id="name"/></p>
+					<p>이메일: <input type="email" id="email"/></p>
+					<p>암호: <input type="password" id="passwd"/></p>
+					<p>
+						<input type="reset" value="취소"/>
+						<input type="button" value="등록" onclick="submitSignup()"/>
+					</p>
+				</form>
+			`;
+		} else if(pid == 2){
+			html += `
+				<form id="loginForm"/*action="/siteuser/sample" method="post"*/>
+					<p>이메일: <input type="email" id="email" placeholder="Email" required></p>
+					<p>암호: <input type="password" id="passwd" placeholder="Password" required></p>
+					<p><input type="reset" value="취소"/>
+						<input type="button" value="로그인" onclick="submitLogin()"/>
+					</p>
+				</form>
+			`;
+		} else if(pid == 3){
+			html += `
+				<p><a href="/siteuser/sample">첫 페이지</a> |
+			        <a href="/siteuser/sample?pid=4">글 작성</a>
+			    </p>
+			    <table style="width:100%">
+			        <tr><th>번호</th><th>제목</th><th>작성자</th></tr>
+			        ${obj.articles.map(a => `
+			        <tr>
+			            <td>${a.num}</td>
+			            <td><a href="/siteuser/read?num=${a.num}">${a.title}</a></td>
+			            <td>${a.author}</td>
+			        </tr>`).join('')}
+			    </table>
+		    `;
+		} else if(pid == 4){
+			
+		}
+		
+		document.getElementById("section").innerHTML = html;
+	}
+	
+	function submitSignup() {
+		const name = document.getElementById('name').value;
+		const email = document.getElementById('email').value;
+		const passwd = document.getElementById('passwd').value;
+		
+		if (!name || !email || !passwd) {
+            alert('모든 필드를 입력해주세요.');
+            return;
+        }
+		
+		axios.post('/siteuser/signup', {
+			name: name,
+			email: email,
+			passwd: passwd
+		})
+		.then(response => {
+			alert('회원가입이 완료되었습니다!');
+			window.location.href = '/siteuser/sample';
+		})
+		.catch(error => {
+			if (error.response && error.response.status === 409) {
+                alert('이미 존재하는 계정입니다.');
+            }else{
+				console.error('회원가입 오류:', error);
+				alert('회원가입 중 오류 발생: ' + error.message);
+            }
+		});
+	}
+	
+	function submitLogin() {
+        console.log('로그인 버튼 클릭');  // 버튼 클릭 확인용 로그
+        const email = document.getElementById('email').value;
+        const passwd = document.getElementById('passwd').value;
+        
+        if (!email || !passwd) {
+            alert('모든 필드를 입력해주세요.');
+            return;
+        }
+
+        console.log('로그인 데이터:', { email: email, passwd: passwd });  // 데이터 확인용 로그
+
+        axios.post('/siteuser/login', {
+            email: email,
+            passwd: passwd
+        })
+        .then(response => {
+            console.log('응답 데이터:', response.data);  // 응답 데이터 확인용 로그
+            alert(response.data);
+            window.location.href = '/siteuser/sample';
+        })
+        .catch(error => {
+            console.error('로그인 중 오류 발생:', error);  // 오류 메시지 확인용 로그
+            alert('로그인 중 오류 발생: ' + error.response.data);
+        });
+    }
+	
+	function navigate(url) {
+		window.location.href = url;
+	}
+	
+	let pid = [[${pid}]];
+	/*let urlParams = new URLSearchParams(window.location.search);
+    pid = urlParams.get('pid') || pid;
+    let url = '/siteuser/json-data?pid=' + pid;
+	console.log(`pid: ${pid}`);*/
+	
+	let url = '/siteuser/json-data?pid=' + pid;
+	let xhr = new XMLHttpRequest();
+	xhr.overrideMimeType("application/json");
+	xhr.open('GET', url, true);
+	xhr.send(null);
+	xhr.onload = function(){
+		if (xhr.status == 200){
+			//alert(`${xhr.response}`);
+			show(xhr.response, pid);
+		}else {
+            alert('데이터 읽기 오류: ' + xhr.status);
+		}
+	};/*
+	xhr.onerror = function(){
+		alert("데이터 읽기 오류");
+	};*/
+	
+	axios.get('/siteuser/check-login')
+    .then(response => {
+        document.getElementById('login-status').innerHTML = `<p>로그인 상태: ${response.data}</p>`;
+    })
+    .catch(error => {
+        console.error('로그인 상태 확인 중 오류 발생:', error);
+        document.getElementById('login-status').innerHTML = `<p>로그인 필요</p>`;
+    });
+	
+	axios.get(url)
+    .then(response => {
+    	console.log(response.data);
+        show(response.data, pid);
+    })
+    .catch(error => {
+    	console.error("데이터 읽기 오류: ", error);
+        alert("데이터 읽기 오류" + error);
+    });
+	</script>
+</body>
+</html>
