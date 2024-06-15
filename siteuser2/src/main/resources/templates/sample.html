@@ -1,179 +1,352 @@
 <!DOCTYPE html>
 <html xmlns:th="https://www.thymeleaf.org">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
-<title>JSON 데이터</title>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
+    <title>JSON 데이터</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .file-list {
+            margin-top: 20px;
+        }
+        .file-list a {
+            display: block;
+            margin: 5px 0;
+            color: #333;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-	<div class="w3-container w3-blue">
-		<h1 id="header"></h1>
-		<div id="login-status"></div> <!-- 로그인 상태를 표시할 요소 -->
-	</div>
-	
-	<div class="w3-container">
-		<div class="w3-panel w3-leftbar">
-			<p id="section"></p>
-		</div>
-	</div>
-	
-	<script>
-	function show(obj, pid){
-		document.getElementById("header").innerHTML = `<h2>${obj.header}</h2>`;
-		html = "";
-		if(pid == 0){
-			for (let k = 0; k < obj.menus.length; k++){
-				let key = Object.keys(obj.menus[k])[0];
-				let value = obj.menus[k][key];
-				html += `<p class='w3-panel w3-padding-16'><a href='${value}'>${key}</a></p>`;
-			}
-		} else if(pid == 1){
-			html += `
-				<form id="signupForm"/*action="/siteuser/sample" method="post"*/>
-					<p>이름: <input type="text" id="name"/></p>
-					<p>이메일: <input type="email" id="email"/></p>
-					<p>암호: <input type="password" id="passwd"/></p>
-					<p>
-						<input type="reset" value="취소"/>
-						<input type="button" value="등록" onclick="submitSignup()"/>
-					</p>
-				</form>
-			`;
-		} else if(pid == 2){
-			html += `
-				<form id="loginForm"/*action="/siteuser/sample" method="post"*/>
-					<p>이메일: <input type="email" id="email" placeholder="Email" required></p>
-					<p>암호: <input type="password" id="passwd" placeholder="Password" required></p>
-					<p><input type="reset" value="취소"/>
-						<input type="button" value="로그인" onclick="submitLogin()"/>
-					</p>
-				</form>
-			`;
-		} else if(pid == 3){
-			html += `
-				<p><a href="/siteuser/sample">첫 페이지</a> |
-			        <a href="/siteuser/sample?pid=4">글 작성</a>
-			    </p>
-			    <table style="width:100%">
-			        <tr><th>번호</th><th>제목</th><th>작성자</th></tr>
-			        ${obj.articles.map(a => `
-			        <tr>
-			            <td>${a.num}</td>
-			            <td><a href="/siteuser/read?num=${a.num}">${a.title}</a></td>
-			            <td>${a.author}</td>
-			        </tr>`).join('')}
-			    </table>
-		    `;
-		} else if(pid == 4){
-			
-		}
-		
-		document.getElementById("section").innerHTML = html;
-	}
-	
-	function submitSignup() {
-		const name = document.getElementById('name').value;
-		const email = document.getElementById('email').value;
-		const passwd = document.getElementById('passwd').value;
-		
-		if (!name || !email || !passwd) {
-            alert('모든 필드를 입력해주세요.');
-            return;
-        }
-		
-		axios.post('/siteuser/signup', {
-			name: name,
-			email: email,
-			passwd: passwd
-		})
-		.then(response => {
-			alert('회원가입이 완료되었습니다!');
-			window.location.href = '/siteuser/sample';
-		})
-		.catch(error => {
-			if (error.response && error.response.status === 409) {
-                alert('이미 존재하는 계정입니다.');
-            }else{
-				console.error('회원가입 오류:', error);
-				alert('회원가입 중 오류 발생: ' + error.message);
+    <div class="w3-container w3-blue">
+        <h1 id="header"></h1>
+        <div id="login-status"></div>
+    </div>
+
+    <div class="w3-container container">
+        <div class="w3-panel w3-leftbar">
+            <p id="section"></p>
+        </div>
+
+        <div class="w3-panel w3-leftbar">
+            <div class="file-list w3-container w3-card-4 w3-padding">
+                <h3>Uploaded Files:</h3>
+                <div id="fileList">
+                    <!-- Uploaded files will be listed here -->
+                    <ul id="uploadedFilesList"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function show(obj, pid) {
+            document.getElementById("header").innerHTML = `<h2>${obj.header}</h2>`;
+            let html = "";
+            if (pid == 0) {
+                for (let k = 0; k < obj.menus.length; k++) {
+                    let key = Object.keys(obj.menus[k])[0];
+                    let value = obj.menus[k][key];
+                    html += `<p class='w3-panel w3-padding-16'><a href='${value}'>${key}</a></p>`;
+                }
+            } else if (pid == 1) {
+                html += `
+                    <form id="signupForm">
+                        <p>이름: <input type="text" id="name"/></p>
+                        <p>이메일: <input type="email" id="email"/></p>
+                        <p>암호: <input type="password" id="passwd"/></p>
+                        <p>
+                            <input type="reset" value="취소"/>
+                            <input type="button" value="등록" onclick="submitSignup()"/>
+                        </p>
+                    </form>
+                `;
+            } else if (pid == 2) {
+                html += `
+                    <form id="loginForm">
+                        <p>이메일: <input type="email" id="email" placeholder="Email" required></p>
+                        <p>암호: <input type="password" id="passwd" placeholder="Password" required></p>
+                        <p><input type="reset" value="취소"/>
+                            <input type="button" value="로그인" onclick="submitLogin()"/>
+                        </p>
+                    </form>
+                `;
+            } else if (pid == 3) {
+                html += `
+                    <p><a href="/siteuser/sample">첫 페이지</a> |
+                        <a href="/siteuser/sample?pid=5">글 작성</a>
+                    </p>
+                    <table style="width:100%">
+                        <tr><th>번호</th><th>제목</th><th>작성자</th></tr>
+                        ${obj.articles.map(a => `
+                        <tr>
+                            <td>${a.num}</td>
+                            <td><a href="/siteuser/read?num=${a.num}">${a.title}</a></td>
+                            <td>${a.author}</td>
+                        </tr>`).join('')}
+                    </table>
+                `;
+            } else if (pid == 4) {
+                html += `
+                    <h3>File Upload</h3>
+                    <form id="fileUploadForm" class="w3-container w3-card-4 w3-padding" enctype="multipart/form-data">
+                        <div class="w3-section">
+                            <label class="w3-label w3-text-blue"><b>Choose file</b></label>
+                            <input class="w3-input w3-border" type="file" name="file" id="fileInput">
+                        </div>
+                        <button type="button" onclick="uploadFile()" class="w3-button w3-blue w3-margin-top">Upload File</button>
+                    </form>
+                `;
+            } else if (pid == 5){
+                html += `
+                	<h3>글 작성</h3>
+                    <form id="newArticleForm" class="w3-container w3-card-4 w3-padding" enctype="multipart/form-data">
+                		<p>제목: <input type="text" name="title" id="title"/></p>
+                        <p>작성자: <input type="text" name="author" id="author"/></p>
+                        <p>내용: <textarea name="body" id="body"></textarea></p>
+                        <div class="w3-section">
+                            <label class="w3-label w3-text-blue"><b>Choose file</b></label>
+                            <input class="w3-input w3-border" type="file" name="file" id="fileInput">
+                        </div>
+                        <button type="button" onclick="uploadFile()" class="w3-button w3-blue w3-margin-top">Upload File</button>
+                    </form>
+                `;
             }
-		});
-	}
-	
-	function submitLogin() {
-        console.log('로그인 버튼 클릭');  // 버튼 클릭 확인용 로그
-        const email = document.getElementById('email').value;
-        const passwd = document.getElementById('passwd').value;
-        
-        if (!email || !passwd) {
-            alert('모든 필드를 입력해주세요.');
-            return;
+
+            document.getElementById("section").innerHTML = html;
         }
 
-        console.log('로그인 데이터:', { email: email, passwd: passwd });  // 데이터 확인용 로그
+        function submitSignup() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const passwd = document.getElementById('passwd').value;
 
-        axios.post('/siteuser/login', {
-            email: email,
-            passwd: passwd
-        })
+            if (!name || !email || !passwd) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            axios.post('/siteuser/signup', {
+                name: name,
+                email: email,
+                passwd: passwd
+            })
+            .then(response => {
+                alert('회원가입이 완료되었습니다!');
+                window.location.href = '/siteuser/sample';
+            })
+            .catch(error => {
+                if (error.response && error.response.status === 409) {
+                    alert('이미 존재하는 계정입니다.');
+                } else {
+                    console.error('회원가입 오류:', error);
+                    alert('회원가입 중 오류 발생: ' + error.message);
+                }
+            });
+        }
+
+        function submitLogin() {
+            console.log('로그인 버튼 클릭');
+            const email = document.getElementById('email').value;
+            const passwd = document.getElementById('passwd').value;
+
+            if (!email || !passwd) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            console.log('로그인 데이터:', { email: email, passwd: passwd });
+
+            axios.post('/siteuser/login', {
+                email: email,
+                passwd: passwd
+            })
+            .then(response => {
+                console.log('응답 데이터:', response.data);
+                alert(response.data);
+                window.location.href = '/siteuser/sample';
+            })
+            .catch(error => {
+                console.error('로그인 중 오류 발생:', error);
+                alert('로그인 중 오류 발생: ' + error.response.data);
+            });
+        }
+
+        function navigate(url) {
+            window.location.href = url;
+        }
+
+        function loadFileList() {
+            axios.get('/sample/files')
+            .then(response => {
+                const files = response.data;
+                let fileListHtml = '';
+                files.forEach(file => {
+                    fileListHtml += `<a href="/api/files/downloadFile/${file}">${file}</a>`;
+                });
+                document.getElementById('fileList').innerHTML = fileListHtml;
+            })
+            .catch(error => {
+                console.error('파일 목록 불러오기 오류:', error);
+                alert('파일 목록 불러오기 오류: ' + error.message);
+            });
+        }
+
+       	/*function uploadFile(){
+        	document.getElementById('fileUploadForm').addEventListener('submit', function(event) {
+	            event.preventDefault();
+	            const formData = new FormData();
+	            const fileInput = document.getElementById('fileInput');
+	            formData.append('file', fileInput.files[0]);
+	
+	            axios.post('/sample/files/uploadFile', formData, {
+	                headers: {
+	                    'Content-Type': 'multipart/form-data'
+	                }
+	            })
+	            .then(response => {
+	                alert('파일 업로드 성공');
+	                loadFileList();
+	            })
+	            .catch(error => {
+	                console.error('파일 업로드 오류:', error);
+	                alert('파일 업로드 오류: ' + error.message);
+	            });
+	        });
+       	}*/
+       	
+       	function uploadFile() {
+            const form = document.getElementById('newArticleForm');
+            const formData = new FormData(form);
+
+            axios.post('/sample/articles/create', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            .then(response => {
+                alert('글 작성 및 파일 업로드 성공');
+                // 필요에 따라 추가 작업 수행
+            })
+            .catch(error => {
+                console.error('글 작성 또는 파일 업로드 오류:', error);
+                alert('글 작성 또는 파일 업로드 오류: ' + error.message);
+            });
+        }
+
+        let pid = [[${pid}]];
+        let url = '/siteuser/json-data?pid=' + pid;
+        let xhr = new XMLHttpRequest();
+        xhr.overrideMimeType("application/json");
+        xhr.open('GET', url, true);
+        xhr.send(null);
+        xhr.onload = function() {
+            if (xhr.status == 200) {
+                show(JSON.parse(xhr.responseText), pid);
+            } else {
+                alert('데이터 읽기 오류: ' + xhr.status);
+            }
+        };
+
+        axios.get('/siteuser/check-login')
         .then(response => {
-            console.log('응답 데이터:', response.data);  // 응답 데이터 확인용 로그
-            alert(response.data);
-            window.location.href = '/siteuser/sample';
+            document.getElementById('login-status').innerHTML = `<p>로그인 상태: ${response.data}</p>`;
         })
         .catch(error => {
-            console.error('로그인 중 오류 발생:', error);  // 오류 메시지 확인용 로그
-            alert('로그인 중 오류 발생: ' + error.response.data);
+            console.error('로그인 상태 확인 중 오류 발생:', error);
+            document.getElementById('login-status').innerHTML = `<p>로그인 필요</p>`;
         });
-    }
-	
-	function navigate(url) {
-		window.location.href = url;
-	}
-	
-	let pid = [[${pid}]];
-	/*let urlParams = new URLSearchParams(window.location.search);
-    pid = urlParams.get('pid') || pid;
-    let url = '/siteuser/json-data?pid=' + pid;
-	console.log(`pid: ${pid}`);*/
-	
-	let url = '/siteuser/json-data?pid=' + pid;
-	let xhr = new XMLHttpRequest();
-	xhr.overrideMimeType("application/json");
-	xhr.open('GET', url, true);
-	xhr.send(null);
-	xhr.onload = function(){
-		if (xhr.status == 200){
-			//alert(`${xhr.response}`);
-			show(xhr.response, pid);
-		}else {
-            alert('데이터 읽기 오류: ' + xhr.status);
-		}
-	};/*
-	xhr.onerror = function(){
-		alert("데이터 읽기 오류");
-	};*/
-	
-	axios.get('/siteuser/check-login')
-    .then(response => {
-        document.getElementById('login-status').innerHTML = `<p>로그인 상태: ${response.data}</p>`;
-    })
-    .catch(error => {
-        console.error('로그인 상태 확인 중 오류 발생:', error);
-        document.getElementById('login-status').innerHTML = `<p>로그인 필요</p>`;
-    });
-	
-	axios.get(url)
-    .then(response => {
-    	console.log(response.data);
-        show(response.data, pid);
-    })
-    .catch(error => {
-    	console.error("데이터 읽기 오류: ", error);
-        alert("데이터 읽기 오류" + error);
-    });
-	</script>
+        
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('파일을 선택하세요');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/siteuser/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.text();
+                    alert(result);
+                } else {
+                    const error = await response.text();
+                    alert('업로드 실패: ' + error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('업로드 중 오류 발생');
+            }
+        }
+        
+        async function downloadFile() {
+            const fileName = document.getElementById('fileNameInput').value;
+            if (!fileName) {
+                alert('파일 이름을 입력하세요');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/siteuser/download?fileName=${encodeURIComponent(fileName)}`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    const error = await response.text();
+                    alert('다운로드 실패: ' + error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('다운로드 중 오류 발생');
+            }
+        }
+        
+        async function loadUploadedFiles() {
+            try {
+                const response = await fetch('/siteuser/uploaded-files');
+                if (response.ok) {
+                    const files = await response.json();
+                    const uploadedFilesList = document.getElementById('uploadedFilesList');
+                    uploadedFilesList.innerHTML = '';
+                    files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.textContent = file;
+                        uploadedFilesList.appendChild(li);
+                    });
+                } else {
+                    const error = await response.text();
+                    alert('파일 목록을 불러오는데 실패했습니다: ' + error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('파일 목록을 불러오는 중 오류 발생');
+            }
+        }
+
+        window.onload = loadUploadedFiles;
+    </script>
 </body>
 </html>
