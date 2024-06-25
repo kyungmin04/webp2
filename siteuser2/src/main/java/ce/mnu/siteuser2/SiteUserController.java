@@ -24,8 +24,6 @@ public class SiteUserController {
 	@Autowired
     private SiteUserRepository userRepository;
 
-    private List<String> uploadedFiles = new ArrayList<>();
-
     @GetMapping(value= {"", "/"})
     public String start(Model model) {
         return "start";
@@ -99,7 +97,7 @@ public class SiteUserController {
     @GetMapping(path="/logout")
     public String logout(HttpSession session) {
         session.invalidate();
-        return "";
+        return "redirect:/siteuser/sample";
     }
 
     @Autowired
@@ -111,18 +109,47 @@ public class SiteUserController {
         return "new_article";
     }
 
-    @PostMapping(path="/bbs/add", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public ResponseEntity<String> addArticle(@RequestBody Article article, HttpSession session) {
+    @PostMapping(path="/bbs/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String addArticle(@ModelAttribute Article article, @RequestParam(required = false) MultipartFile file, HttpSession session, RedirectAttributes redirectAttributes) throws IllegalStateException, IOException {
         String email = (String) session.getAttribute("email");
         if (email == null) {
-            return new ResponseEntity<>("로그인이 필요합니다", HttpStatus.UNAUTHORIZED);
+            redirectAttributes.addFlashAttribute("message", "로그인이 필요합니다.");
+            return "redirect:/siteuser/login";
         }
 
-        articleRepository.save(article);
-        return new ResponseEntity<>("게시글이 저장되었습니다", HttpStatus.OK);
+        if (file != null && !file.isEmpty()) {
+            String contentType = file.getContentType();
+            if (!contentType.startsWith("image/")) {
+                redirectAttributes.addFlashAttribute("message", "이미지 파일만 업로드할 수 있습니다.");
+                return "redirect:/siteuser/bbs/write";
+            }
+
+            String newName = file.getOriginalFilename().replace(' ', '_');
+            FileDto dto = new FileDto(newName, contentType);
+            File upfile = new File(base + "/" + dto.getFileName());
+            file.transferTo(upfile);
+
+            List<String> files = article.getFiles();
+            if (files == null) {
+                files = new ArrayList<>();
+            }
+            files.add(newName);
+            article.setFiles(files);
+        }
+
+        System.out.println("Saving article: " + article.getTitle());
+        articleRepository.save(article); // 게시글 저장
+        System.out.println("Article saved successfully.");
+        return "redirect:/siteuser/bbs";
     }
 
+    @GetMapping(path="/bbs/read")
+    public String readArticle(@RequestParam(name="num") Long num, Model model) {
+        Article article = articleRepository.getReferenceById(num);
+        model.addAttribute("article", article);
+        return "read_article";
+    }
+    
     @GetMapping(path="/bbs")
     public ResponseEntity<List<ArticleHeader>> getAllArticles(@RequestParam(name="pno", defaultValue="0") String pno, HttpSession session) {
         String email = (String) session.getAttribute("email");
@@ -142,32 +169,84 @@ public class SiteUserController {
     public ResponseEntity<Article> readArticle(@RequestParam(name="num") String num, HttpSession session) {
         Long no = Long.valueOf(num);
         Article article = articleRepository.getReferenceById(no);
-        
+
         return new ResponseEntity<>(article, HttpStatus.OK);
     }
 
     @Value("${spring.servlet.multipart.location}")
     String base;
+    
+    private List<String> uploadedFiles = new ArrayList<>();
 
     // 파일 업로드 처리
     @PostMapping(path="/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
-    public ResponseEntity<String> upload(@RequestParam MultipartFile file, HttpSession session) throws IllegalStateException, IOException {
+    public ResponseEntity<String> upload(@RequestParam(required = false) MultipartFile file, @RequestParam Long articleId, HttpSession session) throws IllegalStateException, IOException {
         String email = (String) session.getAttribute("email");
         if (email == null) {
             return new ResponseEntity<>("로그인이 필요합니다", HttpStatus.UNAUTHORIZED);
         }
 
-        if (!file.isEmpty()) {
-            String newName = file.getOriginalFilename();
-            newName = newName.replace(' ', '_');
-            FileDto dto = new FileDto(newName, file.getContentType());
-            File upfile = new File(base + "/" + dto.getFileName());
-            file.transferTo(upfile);
-            uploadedFiles.add(newName); // Add the file to the uploaded files list
-            return new ResponseEntity<>("파일이 업로드되었습니다", HttpStatus.OK);
+        if (file == null || file.isEmpty()) {
+            return new ResponseEntity<>("파일이 비어있습니다", HttpStatus.BAD_REQUEST);
         }
-        return new ResponseEntity<>("파일이 비어있습니다", HttpStatus.BAD_REQUEST);
+
+        String newName = file.getOriginalFilename();
+        newName = newName.replace(' ', '_');
+        FileDto dto = new FileDto(newName, file.getContentType());
+        File upfile = new File(base + "/" + dto.getFileName());
+        file.transferTo(upfile);
+
+        // Article 객체에 파일 이름 추가
+        Article article = articleRepository.findById(articleId).orElseThrow(() -> new RuntimeException("Article not found"));
+        List<String> files = article.getFiles();
+        if (files == null) {
+            files = new ArrayList<>();
+        }
+        files.add(newName);
+        article.setFiles(files);
+        articleRepository.save(article);
+
+        return new ResponseEntity<>("파일이 업로드되었습니다", HttpStatus.OK);
+    }
+
+    @PostMapping("/article/react")
+    @ResponseBody
+    public ResponseEntity<String> reactToArticle(@RequestParam Long articleId, @RequestParam String reaction, HttpSession session) {
+        String email = (String) session.getAttribute("email");
+        if (email == null) {
+            return new ResponseEntity<>("로그인이 필요합니다", HttpStatus.UNAUTHORIZED);
+        }
+
+        Article article = articleRepository.findById(articleId).orElseThrow(() -> new RuntimeException("Article not found"));
+        Map<String, String> userReactions = article.getUserReactions();
+
+        if ("like".equals(reaction)) {
+            if ("like".equals(userReactions.get(email))) {
+                article.setLikes(article.getLikes() - 1);
+                userReactions.remove(email);
+            } else {
+                if ("dislike".equals(userReactions.get(email))) {
+                    article.setDislikes(article.getDislikes() - 1);
+                }
+                article.setLikes(article.getLikes() + 1);
+                userReactions.put(email, "like");
+            }
+        } else if ("dislike".equals(reaction)) {
+            if ("dislike".equals(userReactions.get(email))) {
+                article.setDislikes(article.getDislikes() - 1);
+                userReactions.remove(email);
+            } else {
+                if ("like".equals(userReactions.get(email))) {
+                    article.setLikes(article.getLikes() - 1);
+                }
+                article.setDislikes(article.getDislikes() + 1);
+                userReactions.put(email, "dislike");
+            }
+        }
+
+        articleRepository.save(article);
+        return new ResponseEntity<>("반응이 업데이트되었습니다", HttpStatus.OK);
     }
 
     // 파일 다운로드
@@ -191,17 +270,6 @@ public class SiteUserController {
         return new ResponseEntity<>(rsc, headers, HttpStatus.OK);
     }
 
-    // 업로드된 파일 목록 조회
-    @GetMapping(path="/uploaded-files")
-    @ResponseBody
-    public ResponseEntity<List<String>> getUploadedFiles(HttpSession session) {
-        String email = (String) session.getAttribute("email");
-        if (email == null) {
-            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
-        }
-        return new ResponseEntity<>(uploadedFiles, HttpStatus.OK);
-    }
-
     @GetMapping(path="/sample")
     public String sample(@RequestParam(defaultValue="0") String pid, Model model) {
         model.addAttribute("pid", pid);
@@ -210,20 +278,32 @@ public class SiteUserController {
 
     @ResponseBody
     @GetMapping(path="/json-data")
-    public String jsonData(@RequestParam(defaultValue="0") String pid) {
+    public String jsonData(@RequestParam(defaultValue="0") String pid, @RequestParam(required=false) Long articleNum, HttpSession session) {
         JsonObject jo = new JsonObject();
         if (pid.equals("0")) {
-            String[] data = {
-                "사용자 등록", "/siteuser/sample?pid=1",
-                "사용자 로그인", "/siteuser/sample?pid=2",
-                "게시글", "/siteuser/sample?pid=3",
-                "파일 업로드", "/siteuser/sample?pid=4",
-                "사용자 로그아웃", "/siteuser/logout"
-            };
-            jo.addProperty("header", "SiteUser 첫 페이지");
-        
+            boolean isLoggedIn = session.getAttribute("email") != null;
+            String[] data;
+
+            if (isLoggedIn) {
+                data = new String[] {
+                    "사용자 등록", "/siteuser/sample?pid=1",
+                    "게시글", "/siteuser/sample?pid=3",
+                    "파일 업로드", "/siteuser/sample?pid=4",
+                    "사용자 로그아웃", "/siteuser/logout"
+                };
+                jo.addProperty("header", "Main Page");
+            } else {
+                data = new String[] {
+                    "사용자 등록", "/siteuser/sample?pid=1",
+                    "사용자 로그인", "/siteuser/sample?pid=2",
+                    "게시글", "/siteuser/sample?pid=3",
+                    "파일 업로드", "/siteuser/sample?pid=4"
+                };
+                jo.addProperty("header", "Main Page");
+            }
+
             JsonArray ja = new JsonArray();
-            for (int k = 0; k < 5; k++) {
+            for (int k = 0; k < data.length / 2; k++) {
                 JsonObject jObj = new JsonObject();
                 jObj.addProperty(data[2*k], data[2*k + 1]);
                 ja.add(jObj);
@@ -249,8 +329,25 @@ public class SiteUserController {
             jo.addProperty("header", "파일 업로드");
         } else if (pid.equals("5")) {
             jo.addProperty("header", "글 작성");
+        } else if (pid.equals("6") && articleNum != null) {
+            Optional<Article> articleOpt = articleRepository.findByNum(articleNum);
+            if (articleOpt.isPresent()) {
+                Article article = articleOpt.get();
+                jo.addProperty("header", "글 읽기");
+                jo.addProperty("title", article.getTitle());
+                jo.addProperty("author", article.getAuthor());
+                jo.addProperty("body", article.getBody());
+                jo.addProperty("likes", article.getLikes());
+                jo.addProperty("dislikes", article.getDislikes());
+                
+                JsonArray filesArray = new JsonArray();
+                for (String file : article.getFiles()) {
+                    filesArray.add(file);
+                }
+                jo.add("files", filesArray);
+            }
         }
-        
+
         System.out.println(jo.toString());
         return jo.toString();
     }

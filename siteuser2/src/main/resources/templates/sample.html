@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"/>
-    <title>JSON 데이터</title>
+    <title>게시판 프로젝트</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         .container {
@@ -30,18 +30,8 @@
     </div>
 
     <div class="w3-container container">
-        <div class="w3-panel w3-leftbar">
+        <div class="w3-panel w3-bar w3-gray w3-round-xxlarge">
             <p id="section"></p>
-        </div>
-
-        <div class="w3-panel w3-leftbar">
-            <div class="file-list w3-container w3-card-4 w3-padding">
-                <h3>Uploaded Files:</h3>
-                <div id="fileList">
-                    <!-- Uploaded files will be listed here -->
-                    <ul id="uploadedFilesList"></ul>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -53,7 +43,7 @@
                 for (let k = 0; k < obj.menus.length; k++) {
                     let key = Object.keys(obj.menus[k])[0];
                     let value = obj.menus[k][key];
-                    html += `<p class='w3-panel w3-padding-16'><a href='${value}'>${key}</a></p>`;
+                    html += `<p class='w3-panel w3-bar-item w3-padding-small'><a href='${value}'>${key}</a></p>`;
                 }
             } else if (pid == 1) {
                 html += `
@@ -78,7 +68,7 @@
                     </form>
                 `;
             } else if (pid == 3) {
-                html += `
+            	html += `
                     <p><a href="/siteuser/sample">첫 페이지</a> |
                         <a href="/siteuser/sample?pid=5">글 작성</a>
                     </p>
@@ -87,7 +77,7 @@
                         ${obj.articles.map(a => `
                         <tr>
                             <td>${a.num}</td>
-                            <td><a href="/siteuser/read?num=${a.num}">${a.title}</a></td>
+                            <td><a href="/siteuser/sample?pid=6&articleNum=${a.num}">${a.title}</a></td>
                             <td>${a.author}</td>
                         </tr>`).join('')}
                     </table>
@@ -103,24 +93,60 @@
                         <button type="button" onclick="uploadFile()" class="w3-button w3-blue w3-margin-top">Upload File</button>
                     </form>
                 `;
-            } else if (pid == 5){
+            } else if (pid == 5) {
                 html += `
-                	<h3>글 작성</h3>
+                    <h3>글 작성</h3>
                     <form id="newArticleForm" class="w3-container w3-card-4 w3-padding" enctype="multipart/form-data">
-                		<p>제목: <input type="text" name="title" id="title"/></p>
-                        <p>작성자: <input type="text" name="author" id="author"/></p>
-                        <p>내용: <textarea name="body" id="body"></textarea></p>
+                        <p>제목: <input type="text" name="title" id="title" placeholder="Title" required/></p>
+                        <p>작성자: <input type="text" name="author" id="author" placeholder="Author" required/></p>
+                        <p>내용: <textarea name="body" id="body" placeholder="Content" required></textarea></p>
                         <div class="w3-section">
                             <label class="w3-label w3-text-blue"><b>Choose file</b></label>
-                            <input class="w3-input w3-border" type="file" name="file" id="fileInput">
+                            <input class="w3-input w3-border" type="file" name="file" id="fileInput" multiple/>
                         </div>
-                        <button type="button" onclick="uploadFile()" class="w3-button w3-blue w3-margin-top">Upload File</button>
+                        <button type="button" onclick="uploadFile()" class="w3-button w3-blue w3-margin-top">Upload</button>
                     </form>
                 `;
+            } else if (pid == 6) {
+                html += `
+                    <h2>${obj.title}</h2>
+                    <p>작성자: ${obj.author}</p>
+                    <p>${obj.body}</p>
+                    <p>Likes: ${obj.likes} | Dislikes: ${obj.dislikes}</p>
+                    <p>
+	                    <button id="likeButton" class="w3-btn ${obj.userReaction === 'like' ? 'w3-button w3-blue' : 'w3-white w3-border w3-border-blue w3-round'}" onclick="handleLike(${obj.id})">좋아요</button>
+	                    <button id="dislikeButton" class="w3-btn ${obj.userReaction === 'dislike' ? 'w3-button w3-red' : 'w3-white w3-border w3-border-red w3-round'}" onclick="handleDislike(${obj.id})">싫어요</button>
+	                </p>
+                `;
+                if (obj.files && obj.files.length > 0) {  // Add this check to avoid undefined 'length' error
+                    html += `
+                        <h3>Files:</h3>
+                        <ul>
+                            ${obj.files.map(file => `<li><a href="${file}" download>${file}</a></li>`).join('')}
+                        </ul>
+                    `;
+                }
+                html += `
+                    <p><a href="/siteuser/sample?pid=3">글 목록으로 돌아가기</a></p>
+                `;
             }
-
             document.getElementById("section").innerHTML = html;
         }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pid = urlParams.get('pid') || 0;
+            const articleNum = urlParams.get('articleNum');
+            const requestUrl = `/siteuser/json-data?pid=${pid}` + (articleNum ? `&articleNum=${articleNum}` : '');
+
+            axios.get(requestUrl)
+                .then(response => {
+                    show(response.data, pid);
+                })
+                .catch(error => {
+                    console.error('There was an error!', error);
+                });
+        };
 
         function submitSignup() {
             const name = document.getElementById('name').value;
@@ -169,7 +195,6 @@
             })
             .then(response => {
                 console.log('응답 데이터:', response.data);
-                alert(response.data);
                 window.location.href = '/siteuser/sample';
             })
             .catch(error => {
@@ -177,6 +202,55 @@
                 alert('로그인 중 오류 발생: ' + error.response.data);
             });
         }
+        
+        function getUserId() {
+            // 세션 스토리지에서 사용자 ID를 가져오는 예시로 변경
+            return sessionStorage.getItem('userId');
+        }
+
+        function checkLoginStatus() {
+            fetch('/siteuser/check-login')
+                .then(response => {
+                    if (response.status === 200) {
+                        return response.text();
+                    } else if (response.status === 401) {
+                        return "로그인되지 않음";
+                    } else {
+                        return "사용자를 찾을 수 없습니다";
+                    }
+                })
+                .then(status => {
+                    document.getElementById('login-status').innerText = status;
+
+                    // 추가: 사용자가 로그인되어 있는 경우에만 좋아요/싫어요 버튼 표시 로직
+                    const userId = getUserId();
+                    if (userId) {
+                        document.getElementById('likeButton').classList.remove('w3-btn');
+                        document.getElementById('likeButton').classList.remove('w3-white');
+                        document.getElementById('likeButton').classList.remove('w3-border');
+                        document.getElementById('likeButton').classList.remove('w3-border-blue');
+                        document.getElementById('likeButton').classList.remove('w3-round');
+                        document.getElementById('likeButton').classList.add('w3-button');
+                        document.getElementById('likeButton').classList.add('w3-blue');
+
+                        document.getElementById('dislikeButton').classList.remove('w3-btn');
+                        document.getElementById('dislikeButton').classList.remove('w3-white');
+                        document.getElementById('dislikeButton').classList.remove('w3-border');
+                        document.getElementById('dislikeButton').classList.remove('w3-border-blue');
+                        document.getElementById('dislikeButton').classList.remove('w3-round');
+                        document.getElementById('dislikeButton').classList.add('w3-button');
+                        document.getElementById('dislikeButton').classList.add('w3-blue');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('login-status').innerText = '오류가 발생했습니다';
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', (event) => {
+            checkLoginStatus();
+        });
 
         function navigate(url) {
             window.location.href = url;
@@ -198,155 +272,130 @@
             });
         }
 
-       	/*function uploadFile(){
-        	document.getElementById('fileUploadForm').addEventListener('submit', function(event) {
-	            event.preventDefault();
-	            const formData = new FormData();
-	            const fileInput = document.getElementById('fileInput');
-	            formData.append('file', fileInput.files[0]);
-	
-	            axios.post('/sample/files/uploadFile', formData, {
-	                headers: {
-	                    'Content-Type': 'multipart/form-data'
-	                }
-	            })
-	            .then(response => {
-	                alert('파일 업로드 성공');
-	                loadFileList();
-	            })
-	            .catch(error => {
-	                console.error('파일 업로드 오류:', error);
-	                alert('파일 업로드 오류: ' + error.message);
-	            });
-	        });
-       	}*/
-       	
-       	function uploadFile() {
+        function viewArticle(num) {
+            const url = `/siteuser/json-data?pid=6&num=${num}`;
+            axios.get(url)
+                .then(response => {
+                    show(response.data, 6);
+                })
+                .catch(error => {
+                    console.error('글 읽기 오류:', error);
+                    alert('글 읽기 오류: ' + error.message);
+                });
+        }
+
+        function uploadFile() {
             const form = document.getElementById('newArticleForm');
             const formData = new FormData(form);
 
-            axios.post('/sample/articles/create', formData, {
+            axios.post('/siteuser/bbs/add', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             })
             .then(response => {
-                alert('글 작성 및 파일 업로드 성공');
-                // 필요에 따라 추가 작업 수행
+                alert('파일이 성공적으로 업로드되었습니다.');
+                navigate('/siteuser/sample?pid=3');
             })
             .catch(error => {
-                console.error('글 작성 또는 파일 업로드 오류:', error);
-                alert('글 작성 또는 파일 업로드 오류: ' + error.message);
+                console.error('파일 업로드 오류:', error);
+                alert('파일 업로드 오류: ' + (error.response ? error.response.data : error.message));
             });
         }
 
-        let pid = [[${pid}]];
-        let url = '/siteuser/json-data?pid=' + pid;
-        let xhr = new XMLHttpRequest();
-        xhr.overrideMimeType("application/json");
-        xhr.open('GET', url, true);
-        xhr.send(null);
-        xhr.onload = function() {
-            if (xhr.status == 200) {
-                show(JSON.parse(xhr.responseText), pid);
-            } else {
-                alert('데이터 읽기 오류: ' + xhr.status);
-            }
-        };
-
-        axios.get('/siteuser/check-login')
-        .then(response => {
-            document.getElementById('login-status').innerHTML = `<p>로그인 상태: ${response.data}</p>`;
-        })
-        .catch(error => {
-            console.error('로그인 상태 확인 중 오류 발생:', error);
-            document.getElementById('login-status').innerHTML = `<p>로그인 필요</p>`;
-        });
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
         
-        async function uploadFile() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('파일을 선택하세요');
+        function handleLike(articleId) {
+            const userId = getUserId();
+
+            if (!userId) {
+                alert('로그인이 필요합니다.');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('file', file);
+            axios.post('/siteuser/like', null, {
+                params: {
+                    articleId: articleId,
+                    userId: userId
+                }
+            })
+            .then(response => {
+                document.getElementById('likeButton').className = 'w3-button w3-blue';
+                document.getElementById('dislikeButton').className = 'w3-btn w3-white w3-border w3-border-blue w3-round';
+                document.getElementById('likeCount').textContent = response.data.likes;
+                document.getElementById('dislikeCount').textContent = response.data.dislikes;
+            })
+            .catch(error => {
+                console.error('Error updating like:', error);
+                alert('Error updating like: ' + (error.response ? error.response.data : error.message));
+            });
+        }
 
-            try {
-                const response = await fetch('/siteuser/upload', {
-                    method: 'POST',
-                    body: formData
+        function handleDislike(articleId) {
+            const userId = getUserId();
+
+            if (!userId) {
+                alert('로그인이 필요합니다.');
+                return;
+            }
+
+            axios.post('/siteuser/dislike', null, {
+                params: {
+                    articleId: articleId,
+                    userId: userId
+                }
+            })
+            .then(response => {
+                document.getElementById('dislikeButton').className = 'w3-button w3-blue';
+                document.getElementById('likeButton').className = 'w3-btn w3-white w3-border w3-border-blue w3-round';
+                document.getElementById('likeCount').textContent = response.data.likes;
+                document.getElementById('dislikeCount').textContent = response.data.dislikes;
+            })
+            .catch(error => {
+                console.error('Error updating dislike:', error);
+                alert('Error updating dislike: ' + (error.response ? error.response.data : error.message));
+            });
+        }
+
+        function reactToArticle(articleId, reaction) {
+            fetch('/siteuser/article/react', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    articleId: articleId,
+                    reaction: reaction
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'OK') {
+                    alert('반응이 업데이트되었습니다');
+                    // 좋아요 및 싫어요 수 업데이트 등의 추가 작업
+                } else {
+                    alert('반응 업데이트에 실패했습니다');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const pid = parseInt(params.get('pid'), 10) || 0;
+
+            axios.get(`/siteuser/json-data?pid=${pid}`)
+                .then(response => {
+                    show(response.data, pid);
+                })
+                .catch(error => {
+                    console.error('데이터 로드 오류:', error);
+                    alert('데이터 로드 오류: ' + error.message);
                 });
-
-                if (response.ok) {
-                    const result = await response.text();
-                    alert(result);
-                } else {
-                    const error = await response.text();
-                    alert('업로드 실패: ' + error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('업로드 중 오류 발생');
-            }
-        }
-        
-        async function downloadFile() {
-            const fileName = document.getElementById('fileNameInput').value;
-            if (!fileName) {
-                alert('파일 이름을 입력하세요');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/siteuser/download?fileName=${encodeURIComponent(fileName)}`);
-                
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                } else {
-                    const error = await response.text();
-                    alert('다운로드 실패: ' + error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('다운로드 중 오류 발생');
-            }
-        }
-        
-        async function loadUploadedFiles() {
-            try {
-                const response = await fetch('/siteuser/uploaded-files');
-                if (response.ok) {
-                    const files = await response.json();
-                    const uploadedFilesList = document.getElementById('uploadedFilesList');
-                    uploadedFilesList.innerHTML = '';
-                    files.forEach(file => {
-                        const li = document.createElement('li');
-                        li.textContent = file;
-                        uploadedFilesList.appendChild(li);
-                    });
-                } else {
-                    const error = await response.text();
-                    alert('파일 목록을 불러오는데 실패했습니다: ' + error);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('파일 목록을 불러오는 중 오류 발생');
-            }
-        }
-
-        window.onload = loadUploadedFiles;
+        });
     </script>
 </body>
 </html>
